@@ -38,7 +38,7 @@ bool Log::init(const char *file_name, int open_Log, int log_buf_size, int split_
         pthread_create(&tid,NULL,flush_log_thread,NULL);    //创建线程
     }
     
-    openLog=open_Log;
+    openLog_=open_Log;
     m_log_buf_size = log_buf_size;
     m_buf = new char[m_log_buf_size];
     memset(m_buf,'\0',m_log_buf_size);

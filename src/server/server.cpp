@@ -4,15 +4,16 @@ WebServer::WebServer(int port, int trigMode, int timeoutMS, bool OptLinger,
             int sqlPort, const char* sqlUser, const  char* sqlPwd,
             const char* dbName, int connPoolNum, int threadNum,
             bool openLog, int logLevel, int logQueSize )
-            :port_(port), openLinger_(OptLinger), timeoutMS_(timeoutMS), isClose_(false),openLog_(openLog)
-            //timer_(new HeapTimer()), threadpool_(new ThreadPool(threadNum)), epoller_(new Epoller()))
+            :port_(port), openLinger_(OptLinger), timeoutMS_(timeoutMS), isClose_(false)
+            //timer_(new HeapTimer()), threadpool_(new ThreadPool(threadNum))
+            , epoller_(new Epoller())
 {
+     InitEventMode_(trigMode);
+    if(!InitSocket_()) { isClose_ = true;}
 
-    
-    
     //初始化日志
-    if(openLog_) {
-        Log::get_instance()->init("./ServerLog", openLog_, 2000, 800000, logQueSize);
+    if(openLog) {
+        Log::get_instance()->init("./ServerLog", openLog, 2000, 800000, logQueSize);
         if(isClose_) { LOG_ERROR("========== Server init error!=========="); }
         else {
             LOG_INFO("========== Server init ==========");
@@ -31,9 +32,99 @@ WebServer::~WebServer()
 {
 
 }
+
+void WebServer::InitEventMode_(int trigMode) {
+    listenEvent_ = EPOLLRDHUP;
+    connEvent_ = EPOLLONESHOT | EPOLLRDHUP;
+    switch (trigMode)
+    {
+    case 0:
+        break;
+    case 1:
+        connEvent_ |= EPOLLET;
+        break;
+    case 2:
+        listenEvent_ |= EPOLLET;
+        break;
+    case 3:
+        listenEvent_ |= EPOLLET;
+        connEvent_ |= EPOLLET;
+        break;
+    default:
+        listenEvent_ |= EPOLLET;
+        connEvent_ |= EPOLLET;
+        break;
+    }
+    //HttpConn::isET = (connEvent_ & EPOLLET);
+}
+
 void WebServer::Start()
 {
+    int timeMS = -1;           //无事件阻塞
+   if(!isClose_) { LOG_INFO("========== Server start =========="); }
+    while(!isClose_) {
+        /* if(timeoutMS_ > 0) {
+            timeMS = timer_->GetNextTick();
+        } */
+        int eventCnt = epoller_->Wait(timeMS);
+        for(int i = 0; i < eventCnt; i++) {
+            /* 处理事件 */
+            int fd = epoller_->GetEventFd(i);
+            uint32_t events = epoller_->GetEvents(i);
+            if(fd == listenFd_) {
+                DealListen_();
+            }
+            else if(events & (EPOLLRDHUP | EPOLLHUP | EPOLLERR)) {
+                //assert(users_.count(fd) > 0);
+                //CloseConn_(&users_[fd]);
+            }
+            else if(events & EPOLLIN) {
+                //assert(users_.count(fd) > 0);
+                //DealRead_(&users_[fd]);
+            }
+            else if(events & EPOLLOUT) {
+                //assert(users_.count(fd) > 0);
+                //DealWrite_(&users_[fd]);
+            } else {
+                LOG_ERROR("Unexpected event");
+            }
+        }
+    }
+    
+    int eventCnt = epoller_->Wait(timeMS);
+    for (int i = 0; i < eventCnt; i++)
+    {
+        int fd = epoller_->GetEventFd(i);
 
+    }
+    
+}
+
+void WebServer::AddClient_(int fd, sockaddr_in addr) {
+    assert(fd > 0);
+    /* users_[fd].init(fd, addr);
+    if(timeoutMS_ > 0) {
+        timer_->add(fd, timeoutMS_, std::bind(&WebServer::CloseConn_, this, &users_[fd]));
+    } */
+    epoller_->AddFd(fd, EPOLLIN | connEvent_);
+    SetFdNonblock(fd);
+    LOG_INFO("Client in!");
+    //LOG_INFO("Client[%d] in!", users_[fd].GetFd());
+}
+
+void WebServer::DealListen_() {
+    struct sockaddr_in addr;
+    socklen_t len = sizeof(addr);
+    do {
+        int fd = accept(listenFd_, (struct sockaddr *)&addr, &len);
+        /* if(fd <= 0) { return;}
+        else if(HttpConn::userCount >= MAX_FD) {
+            SendError_(fd, "Server busy!");
+            LOG_WARN("Clients is full!");
+            return;
+        } */
+        AddClient_(fd, addr);
+    } while(listenEvent_ & EPOLLET);
 }
 
 bool WebServer::InitSocket_()
@@ -101,5 +192,9 @@ bool WebServer::InitSocket_()
     SetFdNonblock(listenFd_);
     LOG_INFO("Server port:%d", port_);
     return true;
-    
 }    
+
+int WebServer::SetFdNonblock(int fd) {
+    assert(fd > 0);
+    return fcntl(fd, F_SETFL, fcntl(fd, F_GETFD, 0) | O_NONBLOCK);
+}

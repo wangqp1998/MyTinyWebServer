@@ -34,6 +34,7 @@ public:
         pthread_mutex_unlock(&log_lock);
 
     }
+    int openLog_; //关闭日志
 private:
     Log();
     virtual ~Log();
@@ -51,16 +52,16 @@ private:
     block_queue<string> *m_log_queue; //阻塞队列
     bool m_is_async;                  //是否同步标志位
     pthread_mutex_t log_lock;
-    int openLog_; //关闭日志
+    
 
 
 };
 
 
-#define LOG_DEBUG(format, ...) if(1 == openLog_) {Log::get_instance()->write_log(0, format, ##__VA_ARGS__); Log::get_instance()->flush();}
-#define LOG_INFO(format, ...) if(1 == openLog_) {Log::get_instance()->write_log(1, format, ##__VA_ARGS__); Log::get_instance()->flush();}
-#define LOG_WARN(format, ...) if(1 == openLog_) {Log::get_instance()->write_log(2, format, ##__VA_ARGS__); Log::get_instance()->flush();}
-#define LOG_ERROR(format, ...) if(1 == openLog_) {Log::get_instance()->write_log(3, format, ##__VA_ARGS__); Log::get_instance()->flush();}
+#define LOG_DEBUG(format, ...) if(1 == Log::openLog_) {Log::get_instance()->write_log(0, format, ##__VA_ARGS__); Log::get_instance()->flush();}
+#define LOG_INFO(format, ...) if(1 == Log::openLog_) {Log::get_instance()->write_log(1, format, ##__VA_ARGS__); Log::get_instance()->flush();}
+#define LOG_WARN(format, ...) if(1 == Log::openLog_) {Log::get_instance()->write_log(2, format, ##__VA_ARGS__); Log::get_instance()->flush();}
+#define LOG_ERROR(format, ...) if(1 == Log::openLog_) {Log::get_instance()->write_log(3, format, ##__VA_ARGS__); Log::get_instance()->flush();}
 
 
 #endif
