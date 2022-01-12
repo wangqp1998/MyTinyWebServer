@@ -1,4 +1,4 @@
-#include "log.h"
+#include "../lib/log.h"
 #include <time.h>
 #include <string.h>
 
@@ -26,7 +26,7 @@ Log::~Log()
 }
 
 //判断是否为异步，创建文件
-bool Log::init(const char *file_name, int open_Log, int log_buf_size, int split_lines , int max_queue_size)
+bool Log::init(const char *file_name, int close_log, int log_buf_size, int split_lines , int max_queue_size)
 {
     //异步
     if(max_queue_size >= 1)
@@ -35,10 +35,10 @@ bool Log::init(const char *file_name, int open_Log, int log_buf_size, int split_
         m_log_queue = new block_queue<string>(max_queue_size);
     
         pthread_t tid;
-        pthread_create(&tid,NULL,flush_log_thread,NULL);    //创建线程
+        pthread_create(&tid,NULL,flush_log_thread,NULL);
     }
     
-    openLog_=open_Log;
+    m_close_log=close_log;
     m_log_buf_size = log_buf_size;
     m_buf = new char[m_log_buf_size];
     memset(m_buf,'\0',m_log_buf_size);
