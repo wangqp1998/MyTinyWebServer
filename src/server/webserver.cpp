@@ -1,5 +1,5 @@
-#include "../lib/webserver.h"
-#include "../lib/log.h"
+#include "webserver.h"
+#include "../log/log.h"
 
 
 WebServer::WebServer()

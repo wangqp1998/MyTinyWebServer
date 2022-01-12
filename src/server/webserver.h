@@ -13,10 +13,10 @@
 #include <sys/epoll.h>
 #include <string.h>
 #include <signal.h>
-#include "./log.h"
-#include "./lst_timer.h"
-#include "./threadpool.h"
-#include "./http_conn.h"
+#include "../log/log.h"
+#include "../lst_timer/lst_timer.h"
+#include "../threadpool/threadpool.h"
+#include "../http/http_conn.h"
 
 const int MAX_FD = 65536;  //最大文件描述符
 const int MAX_EVENT_NUMBER = 10000; //最大事件数
